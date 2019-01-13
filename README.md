@@ -9,7 +9,7 @@ You can do it through the following link. Insert your Client ID into the url.
 
 `https://discordapp.com/oauth2/authorize?&client_id=CLIENT_ID&scope=bot&permissions=2048`
 
-Clone repo and `npm install`
+Clone/fork repo and `npm install`
 
 Add a .env file in the root directory containing your bot token like so.
 
