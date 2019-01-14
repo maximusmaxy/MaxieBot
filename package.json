@@ -11,6 +11,7 @@
     "body-parser": "^1.18.3",
     "discord.io": "https://github.com/woor/discord.io/tarball/gateway_v6",
     "dotenv": "^6.2.0",
-    "express": "^4.16.4"
+    "express": "^4.16.4",
+    "lowdb": "^1.0.0"
   }
 }
