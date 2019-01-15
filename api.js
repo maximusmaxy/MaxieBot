@@ -36,7 +36,7 @@ module.exports.start = function() {
       res.sendStatus(400);
     }
     else {
-      setPresence(req.body.presence);
+      bot.setPresence(req.body.presence);
       res.json(req.body);
     }
   })

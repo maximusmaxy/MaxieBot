@@ -26,17 +26,18 @@ module.exports.start = function() {
     if (index == -1) {
       index = message.length;
     }
-    switch(message.substring(1, index).toLowerCase()) {
+    var command = message.substring(1, index).toLowerCase();
+    switch(command) {
       case 'help': help(user, userID); break;
       case 'real': send("<@396378092974637056> is the real Maxie ✓", channelID); break;
       case 'roll': roll(message, channelID); break;
-      case 'gay': gay(message, user, channelID, "gay"); break;
-      case 'lesbo': gay(message, user, channelID, "lesbian"); break;
-      case 'regay': regay(user, channelID, "gay"); break;
-      case 'relesbo': regay(user, channelID, "lesbian"); break;
+      case 'gay': gay(message, user, channelID, command, "gay"); break;
+      case 'lesbo': gay(message, user, channelID, command, "lesbian"); break;
+      case 'regay': regay(message, user, channelID, command, "gay"); break;
+      case 'relesbo': regay(message, user, channelID, command, "lesbian"); break;
       case 'futa': send("Futanari is 0% gay", channelID); break;
       case 'traps': send("Traps are 100% gay", channelID); break;
-      case 'test': send("Test", channelID); break;
+      // case 'test': send("Test", channelID); break;
     }
   });
 }
@@ -118,13 +119,12 @@ function roll(message, channelID) {
     send(response, channelID);
   }
   else {
-    send(":smile:", channelID);
+    send("Try !roll d6, !roll 1d20, !roll 6d6+6", channelID);
   }
 }
 
-function gay(message, user, channelID, gayword) {
-  var length = gayword === 'gay' ? 3 : 5;
-  var name = message.length < length + 2 ? user : message.substring(length + 1).trim();
+function gay(message, user, channelID, command, gayword) {
+  var name = message.length < command.length + 2 ? user : message.substring(command.length + 1).trim();
   if (name.length > 40) {
     name = name.substring(0, 40);
   }
@@ -136,25 +136,30 @@ function gay(message, user, channelID, gayword) {
     var percent = rand(100);
     db.gays[key] = {
       g: percent,
-      t: Date.now()
+      t: 0
     };
   }
   var plural = (name[name.length - 1] == 's') ? " are " : " is "; 
   send(name + plural + percent + "% " + gayword, channelID);
 }
 
-function regay(user, channelID, gayword) {
+function regay(message, user, channelID, command, gayword) {
+  if (message.length > command.length + 1) {
+    send("Can't regay other people.", channelID);
+    return;
+  }
   var key = user.toLowerCase();
   if (typeof db.gays[key] !== 'undefined') {
     var percent = db.gays[key].g;
     var time = Date.now()
-    if (time > db.gays[key].t + 3600000) { //1 hour
+    var cooldown = db.gays[key].t + 3600000;
+    if (time > cooldown) {
       var newPercent = rand(100);
       var response = user + " was " + percent + "% " + gayword + " and is now " + newPercent + "% " + gayword + ". ";
       if (newPercent < percent) {
-        response += user + " is " + (percent - newPercent) + "% less " + gayword + ".";
+        response += "That's " + (percent - newPercent) + "% less " + gayword + ".";
       } else if (newPercent > percent) {
-        response += user + " is " + (newPercent - percent) + "% more " + gayword + ".";
+        response += "That's " + (newPercent - percent) + "% more " + gayword + ".";
       } else {
         response += "You are still gay.";
       }
@@ -165,10 +170,10 @@ function regay(user, channelID, gayword) {
       send(response, channelID);
     }
     else {
-      send(user + " is still " + percent + "% gay", channelID);
+      send(user + " is still " + percent + "% gay. " + Math.floor((cooldown - time) / 60000 + 1) + " minutes until next regay.", channelID);
     }
   }
   else {
-    send(user + " isn't gay yet.");
+    send(user + " isn't gay yet.", channelID);
   }
 }
