@@ -1,3 +1,7 @@
 node_modules/
 .vscode/
+.scripts/
+.logs/
 .env
+gays.json
+rig.json

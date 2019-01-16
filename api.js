@@ -16,9 +16,20 @@ module.exports.start = function() {
     res.json(req.body);
   });
 
+  app.post('/rig', (req, res) => {
+    db.rig = Object.assign(db.rig, req.body);
+    console.log(req.body);
+    res.json(req.body);
+  });
+
   app.get('/save', (req, res) => {
-    db.save();
-    res.sendStatus(200);
+    var result = db.save();
+    if (result) {
+      res.sendStatus(200);
+    }
+    else {
+      res.sendStatus(500);
+    }
   });
 
   app.post('/message', (req, res) => {
@@ -26,7 +37,7 @@ module.exports.start = function() {
       res.sendStatus(400);
     }
     else {
-      bot.send(req.body.message, req.body.to);
+      bot.sendTo(req.body.message, req.body.to);
       res.json(req.body);
     }
   });
