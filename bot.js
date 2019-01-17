@@ -29,10 +29,10 @@ bot.on('message', (message) => {
     case 'help': help(message.author); break;
     case 'real': send("<@396378092974637056> is the real Maxie ✓", message.channel); break;
     case 'roll': roll(text, message.channel); break;
-    case 'gay': gay(text, message.author.username, message.channel, command, "gay"); break;
-    case 'lesbo': gay(text, message.author.username, message.channel, command, "lesbian"); break;
-    case 'regay': regay(text, message.author.username, message.channel, command, "gay"); break;
-    case 'relesbo': regay(text, message.author.username, message.channel, command, "lesbian"); break;
+    case 'gay': gay(text, message, command, "gay"); break;
+    case 'lesbo': gay(text, message, command, "lesbian"); break;
+    case 'regay': regay(text, message, command, "gay"); break;
+    case 'relesbo': regay(text, message, command, "lesbian"); break;
     case 'futa': send("Futanari is 0% gay", message.channel); break;
     case 'traps': send("Traps are 100% gay", message.channel); break;
     // case 'test': send("Test", channelID); break;
@@ -123,16 +123,15 @@ function roll(message, channel) {
   }
 }
 
-async function gay(message, user, channel, command, gayword) {
-  var name = message.length < command.length + 2 ? user : message.substring(command.length + 1).trim();
+function gay(text, message, command, gayword) {
+  var name = text.length < command.length + 2 ? message.author.username : text.substring(command.length + 1).trim();
   if (name.length > 40) {
     name = name.substring(0, 40);
   }
   var key = name.toLowerCase();
-  var mention = /^<@(\d+)>$/.exec(key);
-  if (mention) {
-    user = await bot.fetchUser(mention[1]);
-    key = user.username.toLowerCase();
+  if (message.mentions.users.size > 0) {
+    key = message.mentions.users.first().username.toLowerCase();
+    console.log(key);
   }
   if (typeof db.gays[key] !== 'undefined') {
     var percent = db.gays[key].g;
@@ -146,15 +145,15 @@ async function gay(message, user, channel, command, gayword) {
   }
   var plural = (name[name.length - 1] == 's') ? " are " : " is "; 
   var gaywords = typeof percent === 'number' ? percent + '% ' + gayword : percent;
-  send(name + plural + gaywords, channel);
+  send(name + plural + gaywords, message.channel);
 }
 
-function regay(message, user, channel, command, gayword) {
-  if (message.length > command.length + 1) {
-    send("Can't " + command + " other people.", channel);
+function regay(text, message, command, gayword) {
+  if (text.length > command.length + 1) {
+    send("Can't " + command + " other people.", message.channel);
     return;
   }
-  var key = user.toLowerCase();
+  var key = message.author.username.toLowerCase();
   if (typeof db.gays[key] !== 'undefined') {
     var percent = db.gays[key].g;
     var time = Date.now()
@@ -171,7 +170,7 @@ function regay(message, user, channel, command, gayword) {
       var nowNumber = typeof newPercent === 'number';
       var wasWords = wasNumber ? percent + "% " + gayword : percent;
       var nowWords = nowNumber ? newPercent + "% " + gayword : newPercent;
-      var response = user + " was " + wasWords + " and is now " + nowWords + ".";
+      var response = message.author.username + " was " + wasWords + " and is now " + nowWords + ".";
       if (wasNumber && nowNumber) {
         if (newPercent < percent) {
           response += " That's " + (percent - newPercent) + "% less " + gayword + ".";
@@ -185,16 +184,16 @@ function regay(message, user, channel, command, gayword) {
         g: newPercent,
         t: time
       }
-      send(response, channel);
+      send(response, message.channel);
     }
     else {
       var minutes = Math.floor((cooldown - time) / 60000 + 1);
       var plural = minutes == 1 ? " minute" : " minutes";
       var gaywords = typeof percent === 'number' ? percent + '% ' + gayword : percent;
-      send(user + " is still " + gaywords + ". " + minutes + plural + " until next " + command  + ".", channel);
+      send(message.author.username + " is still " + gaywords + ". " + minutes + plural + " until next " + command  + ".", message.channel);
     }
   }
   else {
-    send(user + " isn't " + gayword + " yet.", channel);
+    send(message.author.username + " isn't " + gayword + " yet.", message.channel);
   }
 }
