@@ -12,6 +12,8 @@
     "body-parser": "^1.18.3",
     "discord.js": "^11.4.2",
     "dotenv": "^6.2.0",
-    "express": "^4.16.4"
+    "express": "^4.16.4",
+    "mongodb": "^3.1.12",
+    "twitter": "^1.7.1"
   }
 }

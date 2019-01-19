@@ -7,13 +7,24 @@ module.exports.start = function() {
 }
 
 bot.once('ready', function() {
-  console.log('Connected');
-  setPresence("with your sexuality");
+  console.log('Connected to discord');
+  setPresence("with your sexuality !gayhelp for commands");
 });
 
 bot.on('message', (message) => {
-  if (message.content[0] !== "!" ||
-      message.author.bot) {
+  if (message.author.bot) {
+    return;
+  }
+
+  if (message.guild === null) {
+    sendTo(message.author.username + " sent DM: \"" + message.content + "\"", process.env.MENTION_CHANNEL);
+  }
+  else if (message.isMentioned(bot.user)) {
+    sendTo(message.author.username + " said: \"" + message.content + "\" in " +
+           message.guild.name + "#" + message.channel.name, process.env.MENTION_CHANNEL);
+  }
+
+  if (message.content[0] !== "!") {
     return;
   }
 
@@ -26,32 +37,29 @@ bot.on('message', (message) => {
   var command = text.substring(1, index).toLowerCase();
 
   switch(command) {
-    case 'help': help(message.author); break;
+    case 'gayhelp': help(message.author); break;
     case 'real': send("<@396378092974637056> is the real Maxie ✓", message.channel); break;
     case 'roll': roll(text, message.channel); break;
-    case 'gay': gay(text, message, command, "gay"); break;
-    case 'lesbo': gay(text, message, command, "lesbian"); break;
-    case 'regay': regay(text, message, command, "gay"); break;
-    case 'relesbo': regay(text, message, command, "lesbian"); break;
+    case 'gay': gay(text, message, command); break;
+    case 'regay': regay(text, message, command); break;
     case 'futa': send("Futanari is 0% gay", message.channel); break;
     case 'traps': send("Traps are 100% gay", message.channel); break;
-    // case 'test': send("Test", channelID); break;
   }
 });
 
-function send(message, channel) {
-  channel.send(message);
+function send(text, channel) {
+  channel.send(text);
   console.log({
     to: channel.id,
-    message: message
+    message: text
   });
 }
 
-function sendTo(message, id) {
-  bot.channels.get(id).send(message);
+function sendTo(text, id) {
+  bot.channels.get(id).send(text);
   console.log({
     to: id,
-    message: message
+    message: text
   });
 }
 module.exports.sendTo = sendTo;
@@ -75,7 +83,6 @@ function help(user) {
     channel.send("Hiya " + user.username + "\n" +
     "!gay - Find out how gay you are\n" +
     "!gay (name) - Find out how gay someone else is\n" + 
-    "!lesbo - Same as gay but for the ladies.\n" +
     "!regay - Reroll for gayness once per hour\n" + 
     "!roll - Roll some dice eg. !roll d20, !roll 3d6 + 5")
   });
@@ -123,7 +130,7 @@ function roll(message, channel) {
   }
 }
 
-function gay(text, message, command, gayword) {
+async function gay(text, message, command) {
   var name = text.length < command.length + 2 ? message.author.username : text.substring(command.length + 1).trim();
   if (name.length > 40) {
     name = name.substring(0, 40);
@@ -133,35 +140,40 @@ function gay(text, message, command, gayword) {
     key = message.mentions.users.first().username.toLowerCase();
     console.log(key);
   }
-  if (typeof db.gays[key] !== 'undefined') {
-    var percent = db.gays[key].g;
+  var user = await db.users.findOne({ key: key });
+  if (user) {
+    var percent = user.value;
   }
   else {
     var percent = rand(0, 100);
-    db.gays[key] = {
-      g: percent,
-      t: 0
-    };
+    await db.users.insertOne({
+      key: key,
+      value: percent,
+      time: 0
+    });
   }
   var plural = (name[name.length - 1] == 's') ? " are " : " is "; 
+  var gayword = (!user || typeof user.word === 'undefined') ? 'gay' : user.word;
   var gaywords = typeof percent === 'number' ? percent + '% ' + gayword : percent;
   send(name + plural + gaywords, message.channel);
 }
 
-function regay(text, message, command, gayword) {
+async function regay(text, message, command) {
   if (text.length > command.length + 1) {
     send("Can't " + command + " other people.", message.channel);
     return;
   }
   var key = message.author.username.toLowerCase();
-  if (typeof db.gays[key] !== 'undefined') {
-    var percent = db.gays[key].g;
+  var user = await db.users.findOne({key: key});
+  if (user) {
+    var percent = user.value;
     var time = Date.now()
-    var cooldown = db.gays[key].t + 3600000;
+    var cooldown = user.time + 3600000;
+    var gayword = user.word === 'undefined' ? 'gay' : user.word;
     if (time > cooldown) {
-      if (typeof db.rig[key] !== 'undefined') {
-        var newPercent = db.rig[key];
-        delete db.rig[key];
+      var rig = (await db.rigs.findOneAndDelete({ key: key })).value;
+      if (rig) {
+        var newPercent = rig.value;
       }
       else {
         var newPercent = rand(0, 100);
@@ -180,10 +192,12 @@ function regay(text, message, command, gayword) {
           response += " You are still gay.";
         }
       }
-      db.gays[key] = {
-        g: newPercent,
-        t: time
-      }
+      await db.users.update({ key: key }, {
+        $set: {
+          value: newPercent,
+          time: time
+        }
+      });
       send(response, message.channel);
     }
     else {
@@ -194,6 +208,6 @@ function regay(text, message, command, gayword) {
     }
   }
   else {
-    send(message.author.username + " isn't " + gayword + " yet.", message.channel);
+    send(message.author.username + " isn't gay yet.", message.channel);
   }
 }

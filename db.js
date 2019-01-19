@@ -1,25 +1,15 @@
-var fs = require('fs');
+var MongoClient = require('mongodb').MongoClient;
 
-module.exports.gays = read('./gays.json');
-module.exports.rig = read('./rig.json');
-
-module.exports.save = function() {
-  try {
-    write('./gays.json', module.exports.gays);
-    write('./rig.json', module.exports.rig);
-    console.log('Saved')
-    return true;
+MongoClient.connect(process.env.MONGO_URL, { useNewUrlParser: true }, (err, client) => {
+  if (err) {
+    console.log(err);
+    console.log("Could not connect to db. Shutting down.");
+    process.exit();
   }
-  catch (err) {
-    console.error(err);
+  else {
+    var db = client.db('db');
+    module.exports.users = db.collection('users');
+    module.exports.rigs = db.collection('rigs');
+    console.log("Connected to db");
   }
-  return false;
-}
-
-function read(path) {
-  return fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : {};
-}
-
-function write(path, obj) {
-  fs.writeFileSync(path, JSON.stringify(obj, null, 2), 'utf8');
-}
+});

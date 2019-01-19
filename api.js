@@ -8,27 +8,71 @@ module.exports.start = function() {
 
   app.use(bodyParser.json());
 
-  app.get('/gay', (req, res) => res.json(db.gays));
+  app.get('/users', (req, res) => {
+    db.users.find({}).toArray().then((users) => {
+      res.json({users: users});
+    }).catch((err) => {
+      error(res, err);
+    })
+  });
 
-  app.post('/gay', (req, res) => {
-    db.gays = Object.assign(db.gays, req.body);
-    console.log(req.body);
-    res.json(req.body);
+  app.get('/rigs', (req, res) => {
+    db.rigs.find({}).toArray().then((rigs) => {
+      res.json({rigs: rigs})
+    }).catch((err) => {
+      error(res, err);
+    })
+  });
+
+  app.post('/user', (req, res) => {
+    if (typeof req.body.key === 'undefined') {
+      res.sendStatus(400);
+    }
+    else {
+      db.users.update({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
+        success(res, req.body);
+      }).catch((err) => {
+        error(res, err);
+      });
+    }
   });
 
   app.post('/rig', (req, res) => {
-    db.rig = Object.assign(db.rig, req.body);
-    console.log(req.body);
-    res.json(req.body);
-  });
-
-  app.get('/save', (req, res) => {
-    var result = db.save();
-    if (result) {
-      res.sendStatus(200);
+    if (typeof req.body.key === 'undefined') {
+      res.sendStatus(400);
     }
     else {
-      res.sendStatus(500);
+      db.rigs.update({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
+        success(res, req.body);
+      }).catch((err) => {
+        error(res, err);
+      });
+    }
+  });
+
+  app.delete('/user', (req, res) => {
+    if (typeof req.body.key === 'undefined') {
+      res.sendStatus(400);
+    }
+    else {
+      db.users.deleteOne({ key: req.body.key }).then((result) => {
+        success(res, req.body);
+      }).catch((err) => {
+        error(res, err);
+      });
+    }
+  });
+
+  app.delete('/rig', (req, res) => {
+    if (typeof req.body.key === 'undefined') {
+      res.sendStatus(400);
+    }
+    else {
+      db.rigs.deleteOne({ key: req.body.key }).then((result) => {
+        success(res, req.body);
+      }).catch((err) => {
+        error(res, err);
+      });
     }
   });
 
@@ -53,4 +97,14 @@ module.exports.start = function() {
   })
 
   app.listen(2000, () => console.log('Listening on port 2000'));
+}
+
+function success(res, suc) {
+  console.log(suc);
+  res.sendStatus(200);
+}
+
+function error(res, err) {
+  console.log(err);
+  res.sendStatus(500);
 }
