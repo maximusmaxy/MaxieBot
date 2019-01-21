@@ -2,6 +2,7 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var db = require('./db.js');
 var bot = require('./bot.js');
+var rest = require('./rest.js');
 
 module.exports.start = function() {
   var app = express();
@@ -94,7 +95,25 @@ module.exports.start = function() {
       bot.setPresence(req.body.presence);
       res.json(req.body);
     }
-  })
+  });
+
+  app.get('/restart', (req, res) => {
+    bot.restart().then(() => {
+      res.sendStatus(200);
+    }).catch((err) => {
+      error(res, err);
+    });
+  });
+
+  app.post('/blacklist', (req, res) => {
+    if (typeof req.body.tag === 'undefined') {
+      res.sendStatus(400);
+    }
+    else {
+      rest.blacklist.push(req.body.tag);
+      res.json(req.body);
+    }
+  });
 
   app.listen(2000, () => console.log('Listening on port 2000'));
 }

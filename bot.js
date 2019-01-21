@@ -1,6 +1,20 @@
 var Discord  = require('discord.js');
 var bot = new Discord.Client();
 var db = require('./db.js');
+var rest = require('./rest.js');
+var util = require('./util.js');
+
+var prestige = [
+  'straight',
+  'not really gay',
+  'kinda gay',
+  'gay',
+  'super gay',
+  'ultimate gay',
+  'big gay',
+  'god gay',
+  'super saiyan god super saiyan gay'
+]
 
 module.exports.start = function() {
   bot.login(process.env.TOKEN);
@@ -9,6 +23,11 @@ module.exports.start = function() {
 bot.once('ready', function() {
   console.log('Connected to discord');
   setPresence("with your sexuality !gayhelp for commands");
+});
+
+bot.on('error', function(err) {
+  console.error(err);
+  module.exports.restart();
 });
 
 bot.on('message', (message) => {
@@ -42,8 +61,10 @@ bot.on('message', (message) => {
     case 'roll': roll(text, message.channel); break;
     case 'gay': gay(text, message, command); break;
     case 'regay': regay(text, message, command); break;
-    case 'futa': send("Futanari is 0% gay", message.channel); break;
-    case 'traps': send("Traps are 100% gay", message.channel); break;
+    case 'upgay': upgay(message); break;
+    case 'downgay': downgay(message); break;
+    case 'futa': image(message, command, rest.futa); break;
+    case 'trap': image(message, command, rest.trap); break;
   }
 });
 
@@ -74,17 +95,18 @@ function setPresence(presence) {
 }
 module.exports.setPresence = setPresence;
 
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function help(user) {
   user.createDM().then((channel) => {
-    channel.send("Hiya " + user.username + "\n" +
-    "!gay - Find out how gay you are\n" +
-    "!gay (name) - Find out how gay someone else is\n" + 
-    "!regay - Reroll for gayness once per hour\n" + 
-    "!roll - Roll some dice eg. !roll d20, !roll 3d6 + 5")
+    channel.send("Hiya " + user.username +
+    "\n!gay - Find out how gay you are" +
+    "\n!gay (name) - Find out how gay someone else is" + 
+    "\n!regay - Reroll for gayness once per hour" + 
+    "\n!roll - Roll some dice eg. !roll d20, !roll 3d6 + 5" +
+    "\n!upgay - Promote your level of gayness if 100%" +
+    "\n!downgay - Demote your level of gayness if 0%" +
+    "\n!futa - NSFW channels only" +
+    "\n!trap - NSFW channels only"
+    )
   });
 }
 
@@ -95,7 +117,7 @@ function roll(message, channel) {
     var side = parseInt(match[2]);
     var mod = parseInt(match[3] + match[4]) || 0;
     if (dice == 1) {
-      var roll = rand(1, side);
+      var roll = util.rand(1, side);
       var response = "You rolled a " + (roll + mod);
       if (side == 20) {
         if (roll == 20) { 
@@ -110,7 +132,7 @@ function roll(message, channel) {
       var response = "You rolled ";
       var total = 0;
       for (var i = 0; i < dice; i++) {
-        var roll =  rand(1, side);
+        var roll =  util.rand(1, side);
         response += roll;
         if (i != dice - 1) {
           response += " + "
@@ -145,7 +167,7 @@ async function gay(text, message, command) {
     var percent = user.value;
   }
   else {
-    var percent = rand(0, 100);
+    var percent = util.rand(0, 100);
     await db.users.insertOne({
       key: key,
       value: percent,
@@ -169,14 +191,14 @@ async function regay(text, message, command) {
     var percent = user.value;
     var time = Date.now()
     var cooldown = user.time + 3600000;
-    var gayword = user.word === 'undefined' ? 'gay' : user.word;
+    var gayword = typeof user.word === 'undefined' ? 'gay' : user.word;
     if (time > cooldown) {
       var rig = (await db.rigs.findOneAndDelete({ key: key })).value;
       if (rig) {
         var newPercent = rig.value;
       }
       else {
-        var newPercent = rand(0, 100);
+        var newPercent = util.rand(0, 100);
       }
       var wasNumber = typeof percent === 'number';
       var nowNumber = typeof newPercent === 'number';
@@ -210,4 +232,86 @@ async function regay(text, message, command) {
   else {
     send(message.author.username + " isn't gay yet.", message.channel);
   }
+}
+
+async function upgay(message) {
+  var key = message.author.username.toLowerCase();
+  var user = await db.users.findOne({key: key});
+  if (user == null) {
+    send(message.author.username + " isn't gay yet.", message.channel);
+    return;
+  }
+  if (typeof user.value !== 'number') {
+    send(message.author.username + " cannot get any more " + user.value, message.channel);
+    return
+  }
+  if (user.value !== 100) {
+    send(message.author.username + " isn't gay enough to upgay. 100% gayness required.", message.channel);
+    return;
+  }
+  var word = typeof user.word === 'undefined' ? 'gay' : user.word;
+  var index = prestige.indexOf(word);
+  if (index === -1 || index + 1 >= prestige.length) {
+    send(message.author.username + " cannot get any more gay.", message.channel);
+    return;
+  }
+  var percent = util.rand(0, 100);
+  var newWord = prestige[index + 1];
+  await db.users.update({ key: key }, {
+    $set: {
+      value: percent,
+      time: 0,
+      word: newWord
+    }
+  });
+  send("Congratulations! " + message.author.username + " is now " + percent + "% " + newWord, message.channel);
+}
+
+async function downgay(message) {
+  var key = message.author.username.toLowerCase();
+  var user = await db.users.findOne({key: key});
+  if (user == null) {
+    send(message.author.username + " isn't gay yet.", message.channel);
+    return;
+  }
+  if (typeof user.value !== 'number') {
+    send(message.author.username + " cannot get any less " + user.value, message.channel);
+    return
+  }
+  if (user.value !== 0) {
+    send(message.author.username + " is too gay to downgay. 0% gayness required.", message.channel);
+    return;
+  }
+  var word = typeof user.word === 'undefined' ? 'gay' : user.word;
+  var index = prestige.indexOf(word);
+  if (index === -1 || index - 1 < 0) {
+    send(message.author.username + " cannot get any less gay.", message.channel);
+    return;
+  }
+  var percent = util.rand(0, 100);
+  var newWord = prestige[index - 1];
+  await db.users.update({ key: key }, {
+    $set: {
+      value: percent,
+      time: 0,
+      word: newWord
+    }
+  });
+  send("Congratulations! " + message.author.username + " is now " + percent + "% " + newWord, message.channel);
+}
+
+async function image(message, command, func) {
+  if (!message.channel.nsfw) {
+    send("This channel isn't NSFW. No " + command + " for you!", message.channel);
+  }
+  else {
+    var url = await func();
+    send(url || 'Woops, try again.', message.channel);
+  }
+}
+
+module.exports.restart = async function() {
+  await bot.destroy();
+  bot = new Discord.Client();
+  module.exports.start();
 }
