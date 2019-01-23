@@ -25,12 +25,20 @@ module.exports.start = function() {
     })
   });
 
+  app.get('/trades', (req, res) => {
+    db.trades.find({}).toArray().then((trades) => {
+      res.json({trades: trades})
+    }).catch((err) => {
+      error(res, err);
+    })
+  });
+
   app.post('/user', (req, res) => {
     if (typeof req.body.key === 'undefined') {
       res.sendStatus(400);
     }
     else {
-      db.users.update({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
+      db.users.updateOne({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
         success(res, req.body);
       }).catch((err) => {
         error(res, err);
@@ -43,7 +51,20 @@ module.exports.start = function() {
       res.sendStatus(400);
     }
     else {
-      db.rigs.update({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
+      db.rigs.updateOne({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
+        success(res, req.body);
+      }).catch((err) => {
+        error(res, err);
+      });
+    }
+  });
+
+  app.post('/trade', (req, res) => {
+    if (typeof req.body.key === 'undefined') {
+      res.sendStatus(400);
+    }
+    else {
+      db.trades.updateOne({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
         success(res, req.body);
       }).catch((err) => {
         error(res, err);
@@ -70,6 +91,19 @@ module.exports.start = function() {
     }
     else {
       db.rigs.deleteOne({ key: req.body.key }).then((result) => {
+        success(res, req.body);
+      }).catch((err) => {
+        error(res, err);
+      });
+    }
+  });
+
+  app.delete('/trade', (req, res) => {
+    if (typeof req.body.key === 'undefined') {
+      res.sendStatus(400);
+    }
+    else {
+      db.trades.deleteOne({ key: req.body.key }).then((result) => {
         success(res, req.body);
       }).catch((err) => {
         error(res, err);

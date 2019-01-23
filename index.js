@@ -6,5 +6,5 @@ api.start();
 bot.start();
 
 process.on('uncaughtException', (err) => {
-  console.log(err);
+  console.error(err);
 });

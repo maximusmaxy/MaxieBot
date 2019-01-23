@@ -10,6 +10,7 @@ MongoClient.connect(process.env.MONGO_URL, { useNewUrlParser: true }, (err, clie
     var db = client.db('db');
     module.exports.users = db.collection('users');
     module.exports.rigs = db.collection('rigs');
+    module.exports.trades = db.collection('trades');
     console.log("Connected to db");
   }
 });
