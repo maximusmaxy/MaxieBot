@@ -7,6 +7,7 @@ MongoClient.connect(process.env.MONGO_URL, { useNewUrlParser: true }, (err, clie
     process.exit();
   }
   else {
+    module.exports.client = client;
     var db = client.db('db');
     module.exports.users = db.collection('users');
     module.exports.rigs = db.collection('rigs');

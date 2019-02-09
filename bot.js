@@ -3,18 +3,34 @@ var bot = new Discord.Client();
 var db = require('./db.js');
 var rest = require('./rest.js');
 var util = require('./util.js');
+var fight = require('./fight.js');
+
+try {
+  var secret = require('./secret.js');
+}
+catch (err) {
+  var secret = {
+    message: (bot, message) => {}
+  }
+}
+
+module.exports.client = bot;
 
 var rankings = [
-  'opposite',
-  'not really',
-  'kinda',
   '',
   'super',
   'ultimate',
   'big',
   'god',
+  'galaxy',
+  'super saiyan',
   'super saiyan god super saiyan'
-]
+];
+
+var inbetweenRank = [
+  'not really',
+  'kinda'
+];
 
 var oppositeRank = new Map([
   ['gay', 'straight'],
@@ -25,17 +41,25 @@ var oppositeRank = new Map([
   ['fake Maxie', 'real Maxie'],
   ['attracted to pans', 'attracted to humans'],
   ['heckin lesbo', 'heckin straight'],
+  ['heckin lesbian', 'heckin straight'],
   ['negative gay', 'negative straight'],
-  ['toxic', 'humble']
+  ['toxic', 'humble'],
+  ['high', 'low'],
+  ['spotted chungus', 'striped chungus'],
+  ['big fan', 'small fan']
 ]);
 
 module.exports.start = function() {
   bot.login(process.env.TOKEN);
-}
+};
 
 bot.once('ready', function() {
   console.log('Connected to discord');
   setPresence("with your sexuality !gayhelp for commands");
+  var nicks = process.env.NICKS.split(' ') || []
+  for (let i = 0; i < nicks.length; i++) {
+    setNick(nicks[i], 'Alice~');
+  }
 });
 
 bot.on('error', function(err) {
@@ -56,23 +80,35 @@ bot.on('message', (message) => {
            message.guild.name + "#" + message.channel.name, process.env.MENTION_CHANNEL);
   }
 
+  secret.message(message);
+
   if (message.content[0] !== "!") {
     return;
   }
 
   var text = message.content.trim();
   var index = text.indexOf(" ");
-  if (index == -1) {
+  if (index === -1) {
     index = text.length;
   }
 
   var command = text.substring(1, index).toLowerCase();
 
+  //test
+  // if(command[0] !== 't') {
+  //   return;
+  // }
+  // switch(command.substring(1)) {
   switch(command) {
     //gay
     case 'gayhelp': help(message.author); break;
     case 'gaytrade': trade(text, message, command); break;
+    case 'gayfight': gayfight(text, message, command); break;
     case 'gaycancel': cancel(message); break;
+    case 'gayboy': gayboy(message); break;
+    case 'gaygirl': gaygirl(message); break;
+    case 'gaytier': gaytier(message); break;
+    case 'gaychange': gaychange(text, message); break;
     case 'gay': gay(text, message, command); break;
     case 'regay': regay(text, message, command); break;
     case 'upgay': upgay(message); break;
@@ -80,7 +116,7 @@ bot.on('message', (message) => {
     //image
     case 'girl': image(message, command, true, rest.girl); break;
     case 'futa': image(message, command, true, rest.futa); break;
-    case 'trap': image(message, command, true, rest.trap); break;
+    case 'neko': image(message, command, true, rest.neko); break;
     //other
     case 'roll': roll(text, message.channel); break;
     case 'real': send("<@396378092974637056> is the real Maxie ✓", message.channel); break;
@@ -94,6 +130,7 @@ function send(text, channel) {
     message: text
   });
 }
+module.exports.send = send;
 
 function sendTo(text, id) {
   bot.channels.get(id).send(text);
@@ -114,6 +151,23 @@ function setPresence(presence) {
 }
 module.exports.setPresence = setPresence;
 
+async function directMessage(text, id) {
+  var user = await bot.fetchUser(id);
+  var channel = await user.createDM();
+  channel.sendMessage(text);
+}
+module.exports.directMessage = directMessage;
+
+async function setNick(id, name) {
+  try {
+    await bot.guilds.get(id).members.get(bot.user.id).setNickname(name);
+    console.log("Nickname set for channel " + id);
+  }
+  catch (err) {
+    console.log("Couldn't set nickname " + id + ": " + err);
+  }
+}
+
 function help(user) {
   user.createDM().then((channel) => {
     channel.send("Hiya " + user.username + "! Here's my commands!" +
@@ -121,19 +175,26 @@ function help(user) {
     "\n -- Gay -- " +
     "\n!gay - Find out how gay you are" +
     "\n!gay (name) - Find out how gay someone else is" + 
-    "\n!regay - Reroll for gayness once per hour" + 
+    "\n!regay - Reroll your gayness once every 30 minutes" + 
     "\n!upgay - Promote your level of gayness if 100% gay" +
     "\n!downgay - Demote your level of gayness if 0% gay" +
     "\n!gaytrade (name) - Trade your gayness with someone else" +
-    "\n!gaycancel - Cancel your !gaytrade" +
+    "\n!gayfight (name) - Fight for gayness with someone else" +
+    "\n!gaycancel - Cancel your !gaytrade or !gayfight" +
+    "\n!gayboy - Genders yourself a boy. Removes custom tags" +
+    "\n!gaygirl - Genders yourself a girl. Removes custom tags" + 
+    "\n!gaytier - Find out the current tier list" +
+    "\n!gaychange (@name) (words) - Change the gay words of someone else (Requires manage server permission)" +
     "\n" +
-    "\n -- Images, DM me ;)-- " +
+    "\n -- Images, DM me ;) -- " +
     "\n!girl - Random anime girl (Probably lewd)" +
-    "\n!futa - NSFW channels only" +
-    "\n!trap - NSFW channels only" +
+    "\n!futa - Random futa NSFW channels only" +
+    "\n!neko - Random catgirl NSFW channels only" +
     "\n" + 
     "\n -- Games -- " +
-    "\n!roll - Roll some dice eg. !roll d20, !roll 3d6 + 5"
+    "\n!roll - Roll some dice eg. !roll d20, !roll 3d6 + 5" +
+    "\n" +
+    "\nContact my creator <@396378092974637056> at maxwelllittlejohn@gmail.com"
     )
   });
 }
@@ -144,14 +205,14 @@ function roll(message, channel) {
     var dice = parseInt(match[1]) || 1;
     var side = parseInt(match[2]);
     var mod = parseInt(match[3] + match[4]) || 0;
-    if (dice == 1) {
+    if (dice === 1) {
       var roll = util.rand(1, side);
       var response = "You rolled a " + (roll + mod);
-      if (side == 20) {
-        if (roll == 20) { 
+      if (side === 20) {
+        if (roll === 20) { 
           response += ", Crit!";
         }
-        else if (roll == 1) {
+        else if (roll === 1) {
           response += ", Fail!";
         }
       }
@@ -181,31 +242,32 @@ function roll(message, channel) {
 }
 
 async function gay(text, message, command) {
-  var name = text.length < command.length + 2 ? message.author.username : text.substring(command.length + 1).trim();
-  if (name.length > 40) {
-    name = name.substring(0, 40);
-  }
-  var key = name.toLowerCase();
-  if (message.mentions.users.size > 0) {
-    key = message.mentions.users.first().username.toLowerCase();
-  }
-  var user = await db.users.findOne({ key: key });
-  if (user) {
-    var percent = user.value;
+  if (text.length < command.length + 2) {
+    var member = message.member;
+    var name = memberName(member);
   }
   else {
-    var percent = util.rand(0, 100);
-    await db.users.insertOne({
-      key: key,
-      value: percent,
-      time: 0
-    });
+    var name = text.substring(command.length + 1).trim();
+    var member = findMember(message, name.toLowerCase());
   }
-  var plural = (name[name.length - 1] == 's') ? " are " : " is "; 
-  var rank = (!user || typeof user.rank === 'undefined') ? '' : user.rank;
-  var word = (!user || typeof user.word === 'undefined') ? 'gay' : user.word;
-  var words = typeof percent === 'number' ? percent + '% ' + rankword(rank, word) : percent;
-  send(name + plural + words, message.channel);
+
+  if (member === null) {
+    send("Couldn't find " + name + ". Are you sure they exist?", message.channel);
+    return;
+  }
+
+  var user = await findUser(member.id);
+
+  if (user === null) {
+    var user = {
+      id: member.id,
+      value: util.rand(0, 100),
+      time: 0
+    }
+    await db.users.insertOne(user);
+  }
+
+  send(name + " is " + rankwords(user), message.channel);
 }
 
 async function regay(text, message, command) {
@@ -213,204 +275,513 @@ async function regay(text, message, command) {
     send("Can't " + command + " other people.", message.channel);
     return;
   }
-  var key = message.author.username.toLowerCase();
-  var user = await db.users.findOne({key: key});
-  if (user == null) {
-    send(message.author.username + " isn't gay yet.", message.channel);
+
+  var member = message.member;
+  var user = await findUser(member.id);
+
+  if (user === null) {
+    send(memberName(member) + " isn't gay yet.", message.channel);
     return;
   }
-  var percent = user.value;
-  var time = Date.now()
-  var cooldown = user.time + 1800000;
-  var rank = typeof user.rank === 'undefined' ? '' : user.rank;
-  var word = typeof user.word === 'undefined' ? 'gay' : user.word;
-  var gayword = rankword(rank, word);
-  if (time > cooldown) {
-    var rig = (await db.rigs.findOneAndDelete({ key: key })).value;
-    if (rig) {
-      var newPercent = rig.value;
-    }
-    else {
-      var newPercent = util.rand(0, 100);
-    }
-    var wasNumber = typeof percent === 'number';
-    var nowNumber = typeof newPercent === 'number';
-    var wasWords = wasNumber ? percent + "% " + gayword : percent;
-    var nowWords = nowNumber ? newPercent + "% " + gayword : newPercent;
-    var response = message.author.username + " was " + wasWords + " and is now " + nowWords + ".";
-    if (wasNumber && nowNumber) {
-      if (newPercent < percent) {
-        response += " That's " + (percent - newPercent) + "% less " + gayword + ".";
-      } else if (newPercent > percent) {
-        response += " That's " + (newPercent - percent) + "% more " + gayword + ".";
-      } else {
-        response += " You are still " + gayword + ".";
-      }
-    }
-    if (newPercent === 100) {
-      response += " Type !upgay to raise your " + gayword + "ness!";
-    }
-    else if (newPercent === 0) {
-      response += " Type !downgay to lower your " + gayword + "ness!";
-    }
-    await db.users.updateOne({ key: key }, {
-      $set: {
-        value: newPercent,
-        time: time
-      }
-    });
-    send(response, message.channel);
-  }
-  else {
+
+  var time = Date.now();
+  var cooldown = user.time + 1800000; //30 mins
+
+  if (time < cooldown) {
     var minutes = Math.floor((cooldown - time) / 60000 + 1);
-    var plural = minutes == 1 ? " minute" : " minutes";
-    var gaywords = typeof percent === 'number' ? percent + '% ' + gayword : percent;
-    send(message.author.username + " is still " + gaywords + ". " + minutes + plural + " until next " + command  + ".", message.channel);
+    var plural = minutes === 1 ? " minute" : " minutes";
+    send(memberName(member) + " is still " + rankwords(user) + ". " + minutes + plural + " until next " + command  + ".", message.channel);
+    return;
   }
+
+  var newUser = { ...user };
+  var rig = (await db.rigs.findOneAndDelete({ key: user.id })).value;
+  newUser.value = rig ? rig.value : util.rand(0, 100);
+  newUser.time = time;
+
+  var response = memberName(member) + " was " + rankwords(user) + " and is now " + rankwords(newUser) + ".";
+  var word = oppositeWord(newUser);
+
+  if (typeof user.value === 'number' && typeof newUser.value === 'number') {
+    if (newUser.value < user.value) {
+      response += " That's " + (user.value - newUser.value) + "% less " + word + ".";
+    } else if (newUser.value > user.value) {
+      response += " That's " + (newUser.value - user.value) + "% more " + word + ".";
+    } else {
+      response += " You are still " + word + ".";
+    }
+  }  
+  
+  response += notification(newUser, member, word);
+
+  await db.users.updateOne({ id: newUser.id }, { $set: newUser });
+
+  send(response, message.channel);
 }
 
 async function upgay(message) {
-  var key = message.author.username.toLowerCase();
-  var user = await db.users.findOne({key: key});
-  if (user == null) {
-    send(message.author.username + " isn't gay yet", message.channel);
+  var member = message.member;
+  var user = await findUser(member.id);
+
+  if (user === null) {
+    send(memberName(member) + " isn't gay yet", message.channel);
     return;
   }
+
   if (typeof user.value !== 'number') {
-    send(message.author.username + " cannot get any more " + user.value, message.channel);
-    return
+    send(memberName(member) + " cannot get any more " + user.value, message.channel);
+    return;
   }
-  var word = typeof user.word === 'undefined' ? 'gay': user.word;
+
   if (user.value !== 100) {
-    send(message.author.username + " isn't " + word + " enough to upgay. 100% " + word + "ness required.", message.channel);
-    return;
-  }
-  var rank = typeof user.rank === 'undefined' ? '' : user.rank;
-  var index = rankings.indexOf(rank);
-  if (index === -1 || index + 1 >= rankings.length) {
-    send(message.author.username + " cannot get any more " + rankword(rank, word), message.channel);
-    return;
-  }
-  var percent = util.rand(0, 100);
-  var newRank = rankings[index + 1];
-  await db.users.updateOne({ key: key }, {
-    $set: {
-      value: percent,
-      time: 0,
-      rank: newRank
+    var word = oppositeWord(user);
+    if (user.type === 'opposite') {
+      send(memberName(member) + " is too " + word + " to upgay. 100% " + word + "ness required.", message.channel);
+    } else {
+      send(memberName(member) + " is not " + word + " enough to upgay. 100% " + word + "ness required.", message.channel);
     }
-  });
-  send("Congratulations! " + message.author.username + " is now " + percent + "% " + rankword(newRank, word) + ".", message.channel);
+    return;
+  }
+ 
+  var rank = typeof user.rank === 'undefined' ? '' : user.rank;
+  var newRank = null;
+  var type = typeof user.type === 'undefined' ? '' : user.type;
+  var newType = type;
+  switch (type) {
+    case '': 
+      var index = rankings.indexOf(rank);
+      if (index !== -1 && index + 1 < rankings.length) {
+        newRank = rankings[index + 1];
+      }
+      break;
+    case 'opposite': 
+      var index = rankings.indexOf(rank);
+      if (index === 0) {
+        var newRank = inbetweenRank[0];
+        var newType = 'inbetween';
+      }
+      else if (index !== -1) {
+        newRank = rankings[index - 1];
+      }
+      break;
+    case 'inbetween': 
+      var index = inbetweenRank.indexOf(rank);
+      if (index === inbetweenRank.length - 1) {
+        var newRank = rankings[0];
+        var newType = '';
+      }
+      else if (index !== -1) { 
+        var newRank = inbetweenRank[index + 1];
+      }
+      break;
+  }
+
+  if (newRank === null) {
+    var more = type === 'opposite' ? 'less' : 'more';
+    send(memberName(member) + " cannot get any " + more + " " + oppositeWord(user), message.channel);
+    return;
+  }
+
+  user.value = util.rand(0, 100);
+  user.time = 0;
+  user.rank = newRank;
+  user.type = newType;
+  await db.users.updateOne({ id: user.id }, { $set: user });
+
+  var response = "Congratulations! " + memberName(member) + " is now " + rankwords(user) + ".";
+
+  if (newType === '' && newRank === rankings[rankings.length - 1]) {
+    response += " You have achieved a level of " + oppositeWord(user) + "ness beyond mere mortals.";
+  }
+
+  send(response, message.channel);
 }
 
 async function downgay(message) {
-  var key = message.author.username.toLowerCase();
-  var user = await db.users.findOne({key: key});
-  if (user == null) {
-    send(message.author.username + " isn't gay yet", message.channel);
+  var member = message.member;
+  var user = await findUser(member.id);
+
+  if (user === null) {
+    send(memberName(member) + " isn't gay yet", message.channel);
     return;
   }
+
   if (typeof user.value !== 'number') {
-    send(message.author.username + " cannot get any less " + user.value, message.channel);
-    return
+    send(memberName(member) + " cannot get any less " + user.value, message.channel);
+    return;
   }
-  var word = typeof user.word === 'undefined' ? 'gay' : user.word;
+
   if (user.value !== 0) {
-    send(message.author.username + " is too " + word + " to downgay. 0% " + word + "ness required.", message.channel);
-    return;
-  }
-  var rank = typeof user.rank === 'undefined' ? '' : user.rank;
-  var index = rankings.indexOf(rank);
-  if (index === -1 || index - 1 < 0) {
-    send(message.author.username + " cannot get any less " + rankword(rank, word), message.channel);
-    return;
-  }
-  var percent = util.rand(0, 100);
-  var newRank = rankings[index - 1];
-  await db.users.updateOne({ key: key }, {
-    $set: {
-      value: percent,
-      time: 0,
-      rank: newRank
+    var word = oppositeWord(user);
+    if (user.type === 'opposite') {
+      send(memberName(member) + " isn't " + word + " enough to downgay. 0% " + word + "ness required.", message.channel);
+    } else {
+      send(memberName(member) + " is too " + word + " to downgay. 0% " + word + "ness required.", message.channel);
     }
-  });
-  send("Congratulations! " + message.author.username + " is now " + percent + "% " + rankword(newRank, word) + ".", message.channel);
+    return;
+  }
+  
+  var rank = typeof user.rank === 'undefined' ? '' : user.rank;
+  var newRank = null;
+  var type = typeof user.type === 'undefined' ? '' : user.type;
+  var newType = type;
+  switch (type) {
+    case '': 
+      var index = rankings.indexOf(rank);
+      if (index === 0) {
+        var newRank = inbetweenRank[inbetweenRank.length - 1];
+        var newType = 'inbetween';
+      }
+      else if (index !== -1) {
+        newRank = rankings[index - 1];
+      }
+      break;
+    case 'opposite': 
+      var index = rankings.indexOf(rank);
+      if (index !== -1 && index + 1 < rankings.length) {
+        newRank = rankings[index + 1];
+      }
+      break;
+    case 'inbetween': 
+      var index = inbetweenRank.indexOf(rank);
+      if (index === 0) {
+        var newRank = rankings[0];
+        var newType = 'opposite';
+      }
+      else if (index !== -1) { 
+        var newRank = inbetweenRank[index - 1];
+      }
+      break;
+  }
+
+  if (newRank === null) {
+    var more = type === 'opposite' ? 'more' : 'less';
+    send(memberName(member) + " cannot get any " + more + " " + rankwords(user), message.channel);
+    return;
+  }
+
+  user.value = util.rand(0, 100);
+  user.time = 0;
+  user.rank = newRank;
+  user.type = newType;
+  await db.users.updateOne({ id: user.id }, { $set: user });
+
+  var response = "Congratulations! " + memberName(member) + " is now " + rankwords(user) + ".";
+
+  if (newType === 'opposite' && newRank === rankings[rankings.length - 1]) {
+    response += " You have achieved a level of " + oppositeWord(user) + "ness beyond mere mortals.";
+  }
+
+  send(response, message.channel);
 }
 
 async function trade(text, message, command) {
   if (text.length < command.length + 2) {
     send('Type !gaytrade (name) to trade your gayness with someone else!', message.channel);
     return;
-  } 
+  }
 
-  var key = message.author.username.toLowerCase();
-  var user = await db.users.findOne({ key: key });
+  var member = message.member;
+  var user = await findUser(member.id);
   if (user == null) {
-    send(message.author.username + " isn't gay yet", message.channel);
+    send(memberName(member) + " isn't gay yet", message.channel);
     return;
   }
 
   var otherName = text.substring(command.length + 1).trim();
-  if (otherName.length > 40) {
-    otherName = otherName.substring(0, 40);
-  }
-  if (message.mentions.users.size > 0) {
-    var otherKey = message.mentions.users.first().username.toLowerCase();
-  }
-  else {
-    var otherKey = otherName.toLowerCase();
-  }
-  var otherUser = await db.users.findOne({ key: otherKey });
-  if (otherUser == null) {
-    send(otherName + " isn't gay yet", message.channel);
+  var otherMember = findMember(message, otherName.toLowerCase());
+
+  if (otherMember === null) {
+    send("Couldn't find " + otherName + ". Are you sure they exist?", message.channel);
     return;
   }
 
-  var trade = await db.trades.findOne({ key: otherKey });
-  if (trade == null) {
-    await db.trades.updateOne({ key: key }, {
+
+  if (member.id === otherMember.id) {
+    send("You can't trade with yourself.", message.channel);
+    return;
+  }
+
+  var otherUser = await findUser(otherMember.id);
+  if (otherUser === null) {
+    send(memberName(otherMember) + " isn't gay yet", message.channel);
+    return;
+  }
+
+  var trade = await db.trades.findOne({ key: otherMember.id });
+  if (trade === null) {
+    await db.trades.updateOne({ key: member.id }, {
       $set: {
-        key: key,
-        other: otherKey
+        key: user.id,
+        other: otherUser.id,
+        type: 'trade'
       }
     }, { upsert: true });
-    send("Tell " + otherName + " to type \"!gaytrade " + message.author.username + "\" to accept the trade", message.channel);
+    send("Tell " + memberName(otherMember) + " to type \"!gaytrade " + memberName(member) + "\" to accept the trade", message.channel);
+    return;
   }
-  else {
-    if (trade.other === key) {
-      var valueCopy = user.value;
-      user.value = otherUser.value
-      otherUser.value = valueCopy;
-      await db.trades.deleteOne({ key: otherKey });
-      await db.users.updateOne({ key: key }, { $set: user });
-      await db.users.updateOne({ key: otherKey }, { $set: otherUser });
-      var rank = typeof user.rank === 'undefined' ? '' : user.rank;
-      var word = typeof user.word === 'undefined' ? 'gay' : user.word;
-      var words = typeof user.value === 'number' ? user.value + "% " + rankword(rank, word) : user.value;
-      var otherRank = typeof otherUser.rank === 'undefined' ? '' : otherUser.rank;
-      var otherWord = typeof otherUser.word === 'undefined' ? 'gay' : otherUser.word;
-      var otherWords = typeof otherUser.value === 'number' ? otherUser.value + "% " + rankword(otherRank, otherWord) : otherUser.value;
-      send("Trade accepted. " + message.author.username + " is now " + words + ". " + otherName + " is now " + otherWords + ".", message.channel);
-    }
-    else {
-      send(otherName + " is trading with someone else. Tell them to !gaycancel their trade.", message.channel);
-    }
+
+  if (trade.other !== user.id) {
+    var tradeWord = trade.type === 'trade' ? 'trade' : 'fight';
+    var tradeWording = trade.type === 'trade' ? 'trading' : 'fighting';
+    send(memberName(otherMember) + " is " + tradeWording + " with someone else. Tell them to !gaycancel their " + tradeWord + ".", message.channel);
+    return;
   }
+
+  if (trade.type !== 'trade') {
+    var tradeWord = trade.type === 'trade' ? 'trade' : 'fight';
+    var tradeWording = trade.type === 'trade' ? 'trading' : 'fighting';
+    send(memberName(otherMember) + " is trying to " + tradeWord + " with you. Tell them to !gaycancel their " + tradeWord + ".", message.channel);
+    return;
+  }
+
+  var valueCopy = user.value;
+  user.value = otherUser.value
+  otherUser.value = valueCopy;
+
+  await db.trades.deleteOne({ key: otherUser.id });
+  await db.users.updateOne({ id: user.id }, { $set: user });
+  await db.users.updateOne({ id: otherUser.id }, { $set: otherUser });
+
+  send("Trade accepted. " + memberName(member) + " is now " + rankwords(user) + ". " + memberName(otherMember) + " is now " + rankwords(otherUser) + ".", message.channel); 
+}
+
+async function gayfight(text, message, command) {
+  if (text.length < command.length + 2) {
+    send('Type !gayfight (name) to fight for your gayness!', message.channel);
+    return;
+  } 
+
+  var member = message.member;
+  var user = await findUser(member.id);
+  if (user == null) {
+    send(memberName(member) + " isn't gay yet", message.channel);
+    return;
+  }
+
+  if (typeof user.value !== 'number') {
+    send(memberName(member) + " cannot fight.", message.channel);
+    return;
+  }
+  
+  var time = Date.now();
+  var cooldown = typeof user.fight === 'number' ? user.fight + 900000 : 0; //15 minutes
+  if (time < cooldown) {
+    var minutes = Math.floor((cooldown - time) / 60000 + 1);
+    var plural = minutes == 1 ? " minute" : " minutes";
+    send(memberName(member) + " cannot fight. " + minutes + plural + " until next " + command  + ".", message.channel);
+    return;
+  }
+
+  var otherName = text.substring(command.length + 1).trim();
+  var otherMember = findMember(message, otherName.toLowerCase());
+
+  if (otherMember === null) {
+    send("Couldn't find " + otherName + ". Are you sure they exist?", message.channel);
+    return;
+  }
+
+  if (member.id === otherMember.id) {
+    send("You can't fight with yourself.", message.channel);
+    return;
+  }
+
+  var otherUser = await findUser(otherMember.id);
+  if (otherUser === null) {
+    send(memberName(otherMember) + " isn't gay yet", message.channel);
+    return;
+  }
+
+  if (typeof otherUser.value !== 'number') {
+    send(otherName + " cannot fight.", message.channel);
+    return;
+  }
+
+  var otherCooldown = typeof otherUser.fight === 'number' ? otherUser.fight + 900000 : 0; //15 minutes
+  if (time < otherCooldown) {
+    var minutes = Math.floor((otherCooldown - time) / 60000 + 1);
+    var plural = minutes == 1 ? " minute" : " minutes";
+    send(memberName(otherMember) + " cannot fight. " + minutes + plural + " until next " + command  + ".", message.channel);
+    return;
+  }
+
+  var trade = await db.trades.findOne({ key: otherUser.id });
+
+  if (trade == null) {
+    await db.trades.updateOne({ key: user.id }, {
+      $set: {
+        key: user.id,
+        other: otherUser.id,
+        type: 'fight'
+      }
+    }, { upsert: true });
+    send("Tell " + memberName(otherMember) + " to type \"!gayfight " + memberName(member) + "\" to accept the fight", message.channel);
+    return;
+  }
+
+  if (trade.other !== user.id) {
+    var tradeWord = trade.type === 'trade' ? 'trade' : 'fight';
+    var tradeWording = trade.type === 'trade' ? 'trading' : 'fighting';
+    send(memberName(otherMember) + " is " + tradeWording + " with someone else. Tell them to !gaycancel their " + tradeWord + ".", message.channel);
+    return;
+  }
+
+  if (trade.type !== 'fight') {
+    var tradeWord = trade.type === 'trade' ? 'trade' : 'fight';
+    var tradeWording = trade.type === 'trade' ? 'trading' : 'fighting';
+    send(memberName(otherMember) + " is trying to " + tradeWord + " with you. Tell them to !gaycancel their " + tradeWord + ".", message.channel);
+    return;
+  }
+  
+  var percent = util.rand(1,5);
+  var winNumber = util.rand(0,1);
+
+  var winner = winNumber === 0 ? user : otherUser;
+  var winnerMember = winNumber === 0 ? member : otherMember;
+  var loser = winNumber === 0 ? otherUser: user;
+  var loserMember = winNumber === 0 ? otherMember: member;
+
+  var gain = Math.min(winner.value + percent, 100) - winner.value;
+  var loss = Math.max(loser.value - percent, 0) + loser.value;
+  var min = Math.min(gain, loss);
+  
+  winner.value += min;
+  loser.value -= min;
+
+  await db.trades.deleteOne({ key: otherUser.id });
+  await db.users.updateOne({ id: winner.id }, { $set: winner });
+  await db.users.updateOne({ id: loser.id }, { $set: loser });
+  
+  var pronoun = typeof winner.pronoun === 'undefined' ? 'his' : winner.pronoun;
+  var winnerName = memberName(winnerMember);
+  var loserName = memberName(loserMember);
+
+  var response = fight.message(winnerName, loserName, pronoun, min);
+  response += "\n" + winnerName + " is now " + rankwords(winner) + ". " 
+  response += notification(winner, winnerMember, oppositeWord(winner));
+  response += " " + loserName + " is now " + rankwords(loser) + ".";
+  response += notification(loser, loserMember, oppositeWord(loser));
+
+  send(response, message.channel);
 }
 
 async function cancel(message) {
-  var key = message.author.username.toLowerCase();
-  var trade = await db.trades.findOne({key: key});
-  if (trade == null) {
-    send(message.author.username + " doesn't have a trade to cancel.", message.channel);
+  var user = await findUser(message.member.id);
+  var trade = await db.trades.findOne({ key: user.id });
+  if (trade === null) {
+    send(memberName(message.member) + " doesn't have a trade or fight to cancel.", message.channel);
     return;
   }
-  await db.trades.deleteOne({ key: key });
-  send(message.author.username + " has cancelled their trade with " + trade.other, message.channel);
+  await db.trades.deleteOne({ key: user.id });
+  send(memberName(message.member) + " has cancelled their " + trade.type, message.channel);
 }
 
-function rankword(rank, word) {
-  if (rank === 'opposite') {
+async function gayboy(message) {
+  var member = message.member;
+  var user = await findUser(member.id)
+  if (user == null) {
+    send(memberName(member) + " isn't gay yet.", message.channel);
+    return;
+  }
+
+  user.word = 'gay';
+  user.pronoun = 'his';
+
+  await db.users.updateOne({ id: user.id }, { $set: user });
+  send(memberName(member) + " is now a " + oppositeWord(user) + " boy.", message.channel);
+}
+
+async function gaygirl(message) {
+  var member = message.member;
+  var user = await findUser(member.id)
+  if (user == null) {
+    send(memberName(member) + " isn't gay yet.", message.channel);
+    return;
+  }
+
+  user.word = 'heckin lesbian';
+  user.pronoun = 'her';
+
+  await db.users.updateOne({ id: user.id }, { $set: user });
+  send(memberName(member) + " is now a " + oppositeWord(user) + " girl.", message.channel);
+}
+
+function gaytier(message) {
+  var response = ["The current tiers are: "];
+  for (let i = 1; i < rankings.length; i++) {
+    response.push("\n" + rankings[i]);
+  }
+  send(response.join(''), message.channel)
+}
+
+async function gaychange(text, message) {
+  if (!message.member.hasPermission(32)) {
+    send("You do not have permission to use this command", message.channel);
+    return;
+  }
+
+  if (message.mentions.users.size !== 1) {
+    send("Please @mention the person you want to gaychange eg. !gaychange @Maxiebot lesbot", message.channel);
+    return;
+  }
+
+  text = text.replace(/\s+/g, ' ');
+  var index = text.indexOf(" ", text.indexOf(" ") + 1);
+
+  if (index === -1) {
+    send('Type !gaychange (@mention) (words) to change the gay words of someone else eg. !gaychange @Maxiebot lesbot', message.channel);
+    return;
+  }
+
+  var member = message.mentions.members.first();
+  var user = await findUser(member.id);
+  if (user == null) {
+    send(memberName(member) + " isn't gay yet", message.channel);
+    return;
+  }
+
+  var words = text.substring(index).trim();
+  if (words.length > 20) {
+    words = words.substring(0, 20);
+  }
+
+  user.word = words;
+  await db.users.updateOne({ id: user.id }, { $set: user });
+  
+  send(memberName(member) + " is now " + oppositeWord(user), message.channel);
+}
+
+function findMember(message, name) {
+  if (message.mentions.members.size === 1) {
+    return message.mentions.members.first();
+  }
+  var member = message.guild.members.find((u) => {
+    return (u.user.username.toLowerCase() === name);
+  });
+  if (member !== null) {
+    return member
+  }
+  return message.guild.members.find((u) => {
+    return (u.nickname && u.nickname.toLowerCase() === name);
+  });
+}
+
+async function findUser(id) {
+  return await db.users.findOne({
+    $or: [
+      { id: id },
+      { alias: id }
+    ]
+  });
+}
+
+function memberName(member) {
+  return member.nickname || member.user.username;
+}
+
+function oppositeWord(user) {
+  var word = typeof user.word === 'undefined' ? 'gay' : user.word;
+  if (user.type === 'opposite') {
     if (oppositeRank.has(word)) {
       return oppositeRank.get(word);
     }
@@ -418,8 +789,50 @@ function rankword(rank, word) {
       return 'not ' + word;
     }
   }
+  return word;
+}
+
+function rankwords(user) {
+  var percent = typeof user.value === 'undefined' ? '' : user.value;
+  if (typeof percent !== 'number') {
+    return percent;
+  }
+  var rank = typeof user.rank === 'undefined' ? '' : user.rank;
+  var word = typeof user.word === 'undefined' ? 'gay' : user.word;
+  var type = typeof user.type === 'undefined' ? '' : user.type;
+  if (type === 'opposite') {
+    if (oppositeRank.has(word)) {
+      word = oppositeRank.get(word);
+    }
+    else {
+      word = 'not ' + word;
+    }
+  }
   var space = rank.length === 0 ? '' : ' ';
-  return rank + space + word;
+  return percent + '% ' + rank + space + word;
+}
+
+function notification(user, member, word) {
+  if (user.value === 100) {
+    if (user.type === 'opposite') {
+      return " Type !upgay to lower your " + word + "ness!";
+    }
+    else {
+      return " Type !upgay to raise your " + word + "ness!";
+    }
+  } else if (user.value === 0) {
+    if (user.type === 'opposite') {
+      return " Type !downgay to raise your " + word + "ness!";
+    }
+    else {
+      return " Type !downgay to lower your " + word + "ness!";
+    }
+  } else if (user.value === 69) {
+    user.time = 0;
+    user.fight = 0;
+    return " 69 damn that's fine. " + memberName(member) + "'s cooldowns are refreshed.";
+  }
+  return "";
 }
 
 async function image(message, command, nsfw, func) {
@@ -434,6 +847,4 @@ async function image(message, command, nsfw, func) {
 
 module.exports.restart = async function() {
   process.exit(1);
-  // await bot.destroy();
-  // bot.login(process.env.TOKEN);
 }

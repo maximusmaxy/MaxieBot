@@ -34,11 +34,11 @@ module.exports.start = function() {
   });
 
   app.post('/user', (req, res) => {
-    if (typeof req.body.key === 'undefined') {
+    if (typeof req.body.id === 'undefined') {
       res.sendStatus(400);
     }
     else {
-      db.users.updateOne({ key: req.body.key }, { $set: req.body }, { upsert: true }).then((result) => {
+      db.users.updateOne({ id: req.body.id }, { $set: req.body }, { upsert: true }).then((result) => {
         success(res, req.body);
       }).catch((err) => {
         error(res, err);
@@ -73,11 +73,11 @@ module.exports.start = function() {
   });
 
   app.delete('/user', (req, res) => {
-    if (typeof req.body.key === 'undefined') {
+    if (typeof req.body.id === 'undefined') {
       res.sendStatus(400);
     }
     else {
-      db.users.deleteOne({ key: req.body.key }).then((result) => {
+      db.users.deleteOne({ id: req.body.id }).then((result) => {
         success(res, req.body);
       }).catch((err) => {
         error(res, err);
@@ -121,6 +121,16 @@ module.exports.start = function() {
     }
   });
 
+  app.post('/dm', (req, res) => {
+    if (typeof req.body.to === 'undefined' || typeof req.body.message === 'undefined') {
+      res.sendStatus(400);
+    }
+    else {
+      bot.directMessage(req.body.message, req.body.to);
+      res.json(req.body);
+    }
+  });
+
   app.post('/presence', (req, res) => {
     if (typeof req.body.presence === 'undefined') {
       res.sendStatus(400);
@@ -137,16 +147,6 @@ module.exports.start = function() {
     }).catch((err) => {
       error(res, err);
     });
-  });
-
-  app.post('/blacklist', (req, res) => {
-    if (typeof req.body.tag === 'undefined') {
-      res.sendStatus(400);
-    }
-    else {
-      rest.blacklist.push(req.body.tag);
-      res.json(req.body);
-    }
   });
 
   app.listen(2000, () => console.log('Listening on port 2000'));

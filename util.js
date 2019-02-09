@@ -1,5 +1,11 @@
+var random = require('random');
+
 module.exports.rand = function(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return random.int(min, max);
+}
+
+module.exports.randArr = function(arr) {
+  return arr[random.int(0, arr.length - 1)];
 }
 
 module.exports.daysPerMonth = function(month, year) {

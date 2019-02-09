@@ -1,7 +1,7 @@
 var axios = require('axios');
 var util = require('./util');
-
-module.exports.blacklist = process.env.BLACKLIST.split(' ') || [];
+require('dotenv').load();
+var blacklist = process.env.BLACKLIST.split(' ');
 
 module.exports.futa = async () => {
   var retry = 0;
@@ -24,11 +24,11 @@ module.exports.futa = async () => {
   return null;
 }
 
-module.exports.trap = async () => {
+module.exports.girl = async () => {
   var retry = 0;
   while (retry < 3) {
     try {
-      var result = await danbooru(process.env.TSTRING, 30);
+      var result = await safebooruPopular();
       if (result) {
         return result;
       }
@@ -36,16 +36,15 @@ module.exports.trap = async () => {
     catch (err) {
       console.error(err);
     }
-    retry++;
   }
   return null;
 }
 
-module.exports.girl = async () => {
+module.exports.neko = async () => {
   var retry = 0;
   while (retry < 3) {
     try {
-      var result = await safebooruPopular();
+      var result = await danbooru(process.env.NSTRING, 50);
       if (result) {
         return result;
       }
@@ -89,7 +88,7 @@ function filterImage(result) {
         return false;
       }
     }
-    if (i.tag_string.split(' ').some((s) => module.exports.blacklist.includes(s))) {
+    if (i.tag_string.split(' ').some((s) => blacklist.includes(s))) {
       return false;
     }
     return true;
