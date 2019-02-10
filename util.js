@@ -1,11 +1,39 @@
-var random = require('random');
-
 module.exports.rand = function(min, max) {
-  return random.int(min, max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 module.exports.randArr = function(arr) {
-  return arr[random.int(0, arr.length - 1)];
+  return arr[module.exports.rand(0, arr.length - 1)];
+}
+
+module.exports.weighting = function(map) {
+  var obj = {};
+  var max = 0;
+  for (let v of map.values()) {
+    max += v;
+  }
+  obj.map = map
+  obj.size = max;
+  return obj;
+}
+
+module.exports.descendingWeighting = function(size) {
+  arr = [];
+  for (let i = 1; i <= size; i++) {
+    arr.push([i, size - i + 1]);
+  }
+  return module.exports.weighting(new Map(arr));
+}
+
+module.exports.randWeighting = function (weighting) {
+  var rand = module.exports.rand(0, weighting.size - 1);
+  var increment = 0;
+  for (let [key, value] of weighting.map) {
+    increment += value;
+    if (rand < increment) {
+      return key;
+    }
+  }
 }
 
 module.exports.daysPerMonth = function(month, year) {

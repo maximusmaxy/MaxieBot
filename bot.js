@@ -115,8 +115,10 @@ bot.on('message', (message) => {
     case 'downgay': downgay(message); break;
     //image
     case 'girl': image(message, command, true, rest.girl); break;
+    case 'lewd': image(message, command, true, rest.lewd); break;
     case 'futa': image(message, command, true, rest.futa); break;
     case 'neko': image(message, command, true, rest.neko); break;
+    case 'kpopfap': image(message, command, true, rest.kpopfap); break;
     //other
     case 'roll': roll(text, message.channel); break;
     case 'real': send("<@396378092974637056> is the real Maxie ✓", message.channel); break;
@@ -186,10 +188,12 @@ function help(user) {
     "\n!gaytier - Find out the current tier list" +
     "\n!gaychange (@name) (words) - Change the gay words of someone else (Requires manage server permission)" +
     "\n" +
-    "\n -- Images, DM me ;) -- " +
-    "\n!girl - Random anime girl (Probably lewd)" +
-    "\n!futa - Random futa NSFW channels only" +
-    "\n!neko - Random catgirl NSFW channels only" +
+    "\n -- Images, NSFW Channels only, DM me ;) -- " +
+    "\n!girl - Random anime girl" +
+    "\n!lewd - More lewd then !girl" +
+    "\n!futa - Random futa" +
+    "\n!neko - Random catgirl" +
+    "\n!kpopfap - Random kpopfap" + 
     "\n" + 
     "\n -- Games -- " +
     "\n!roll - Roll some dice eg. !roll d20, !roll 3d6 + 5" +
